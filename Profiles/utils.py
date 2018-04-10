@@ -35,6 +35,7 @@ def before_request(func):
 
     return wrapped_function
 
+
 def get_member_info(uid):
     account = ldap_get_member(uid)
 
@@ -138,12 +139,12 @@ def process_image(photo, uid):
 
         con = _ldap.get_con()
 
-        exists = account.jpegPhoto
+        exists = get_image(uid)
 
-        if not exists:
-            ldap_mod = ldap.MOD_ADD
-        else:
+        if exists:
             ldap_mod = ldap.MOD_REPLACE
+        else:
+            ldap_mod = ldap.MOD_ADD
 
         mod = (ldap_mod, key, bin_icon.getvalue())
 

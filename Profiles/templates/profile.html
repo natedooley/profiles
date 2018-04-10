@@ -78,8 +78,10 @@
 			<div class="row">
 				<div class="col-sm-3 col-md-6">
 					<div class="card-block card-text">
+						{% if member_info.rn %} 
 						<h5 class="info">Room Number: {{ member_info.rn }}</h5>
 						<br>
+						{%endif%}
 
 						{% if member_info.user_obj.drinkBalance %} 
 						<h5 class="info">Drink Balance: {{ member_info.user_obj.drinkBalance }}</h5>

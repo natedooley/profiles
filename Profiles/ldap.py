@@ -3,6 +3,7 @@ import hashlib, requests, ldap
 
 from functools import lru_cache
 from Profiles import _ldap
+from csh_ldap import CSHMember
 
 
 
@@ -80,7 +81,7 @@ def ldap_get_groups(account):
 
 @lru_cache(maxsize=1024)
 def ldap_get_eboard():
-    members = _ldap_get_group_members("eboard-chairman") + _ldap_get_group_members("eboard-evaluations") + _ldap_get_group_members("eboard-financial") + _ldap_get_group_members("eboard-history") + _ldap_get_group_members("eboard-imps") + _ldap_get_group_members("eboard-opcomm") + _ldap_get_group_members("eboard-research") + _ldap_get_group_members("eboard-social")
+    members = _ldap_get_group_members("eboard-chairman") + _ldap_get_group_members("eboard-evaluations") + _ldap_get_group_members("eboard-financial") + _ldap_get_group_members("eboard-history") + _ldap_get_group_members("eboard-imps") + _ldap_get_group_members("eboard-opcomm") + _ldap_get_group_members("eboard-research") + _ldap_get_group_members("eboard-social") + _ldap_get_group_members("eboard-secretary")
 
     return members
 
@@ -190,39 +191,75 @@ def ldap_set_non_current_student(account):
 def ldap_update_profile(dict, uid):
 	account = _ldap.get_member(uid, uid=True)
 
-	if not dict["name"] == account.cn:
+	
+
+	if not dict["name"] == account.cn or dict["name"] == None or dict["name"] == "None":
 		account.cn = dict["name"]
+	elif dict["name"] ==  None or dict["name"] == "None":
+		account.cn = None
 
-	if not dict["birthday"] == account.birthday:
+	if not dict["birthday"] == account.birthday or dict["birthday"] == None or dict["birthday"] == "None":
 		account.birthday = dict["birthday"]
+	elif dict["birthday"] ==  None or dict["birthday"] == "None":
+		account.birthday = None
 
-	if not dict["phone"] == account.mobile:
+	if not dict["phone"] == account.mobile or dict["phone"] ==None or dict["phone"] == "None":
 		account.mobile = dict["phone"]
+	elif dict["phone"] ==  None or dict["phone"] == "None":
+		account.mobile = None
 
-	if not dict["plex"] == account.plex:
+	if not dict["plex"] == account.plex or dict["plex"] == None or dict["plex"] ==  "None":
 		account.plex = dict["plex"]
+	elif dict["plex"] ==  None or dict["plex"] ==  "None":
+		account.plex = None
 
-	if not dict["major"] == account.major:
+	if not dict["major"] == account.major or dict["major"] == None or dict["major"] == "None":
 		account.major = dict["major"]
+	elif dict["major"] ==  None or dict["major"] == "None":
+		account.major = None
 
-	if not dict["ritYear"] == account.ritYear:
+	if not dict["ritYear"] == account.ritYear or dict["ritYear"] == None  or dict["ritYear"] == "None":
 		account.ritYear = dict["ritYear"]
+	elif dict["ritYear"] ==  None or  dict["ritYear"] =="None":
+		account.ritYear = None
 
-	if not dict["website"] == account.homepageURL:
+	if not dict["website"] == account.homepageURL or dict["website"] ==None or dict["website"] == "None":
 		account.homepageURL = dict["website"]
+	elif dict["website"] ==  None or dict["website"] ==  "None":
+		account.homepageURL = None
 
-	if not dict["github"] == account.github:
+	if not dict["github"] == account.github or dict["github"] ==None  or dict["github"] ==  "None":
 		account.github = dict["github"]
+	elif dict["github"] ==  None or dict["github"] ==  "None":
+		account.github = None
 
-	if not dict["twitter"] == account.twitterName:
+	if not dict["twitter"] == account.twitterName or dict["twitter"] ==None or dict["twitter"] == "None":
 		account.twitterName = dict["twitter"]
+	elif dict["twitter"] ==  None or dict["twitter"] == "None":
+		account.twitterName = None
 
-	if not dict["blog"] == account.blogURL:
+	if not dict["blog"] == account.blogURL or dict["blog"] ==None or dict["blog"] == "None":
 		account.blogURL = dict["blog"]
+	elif dict["blog"] ==  None or dict["blog"] == "None":
+		account.blogURL = None
 
-	if not dict["google"] == account.googleScreenName:
+	if not dict["google"] == account.googleScreenName or dict["google"] == None  or dict["google"] == "None":
 		account.googleScreenName = dict["google"]
+	elif dict["google"] ==  None or dict["google"] == "None":
+		account.googleScreenName = None
 
+	account.blogURL = None
+
+	con = _ldap.get_con()
+	ldap_mod = ldap.MOD_DELETE
+	key = blogURL
+
+	mod = (ldap_mod, key)
+
+	mod_attrs = [mod]
+
+	con.modify_s(account.get_dn(), mod_attrs)
+	
 
 def ldap_get_roomnumber(account):
     try:
@@ -233,27 +270,25 @@ def ldap_get_roomnumber(account):
 
 @lru_cache(maxsize=1024)
 def ldap_search_members(query):
-  #   con = _ldap.get_con()
-  #   results= con.search_s(
-		# "dc=csh,dc=rit,dc=edu",
-		# ldap.SCOPE_SUBTREE,
-		# "(uid=%s)" % query,
-		# ['uid'])
+    con = _ldap.get_con()
+    filt = str("(|(description=*{0}*)(displayName=*{0}*)(mail=*{0}*)(nickName=*{0}*)(plex=*{0}*)(sn=*{0}*)(uid=*{0}*)(mobile=*{0}*)(twitterName=*{0}*)(github=*{0}*))").format(query)
 
-    active = ldap_get_all_members();
-    results = []
-    query = query.lower()
+    res= con.search_s(
+		"dc=csh,dc=rit,dc=edu",
+		ldap.SCOPE_SUBTREE,
+		filt,
+		['uid'])
 
-    for account in active:
-        uid = account.uid.lower()
-        name = account.gecos
+    ret = []
 
-        if name:
-            name = name.lower()
-            if query in uid or query in name:
-                results.append(account)
+    for uid in res:
+    	try:
+    		mem = (str(uid[1]).split('\'')[3])
+    		ret.append(ldap_get_member(mem))
+    	except IndexError:
+    		continue
 
-    return results
+    return ret
 
 
 # @lru_cache(maxsize=1024)
